@@ -57,12 +57,17 @@ func (r *Reader) NumPage() int {
 	return int(r.Trailer().Key("Root").Key("Pages").Key("Count").Int64())
 }
 
-// GetPlainText returns all the text in the PDF file
-func (r *Reader) GetPlainText() io.Reader {
+
+// GetPlainTextSlice returns text from the first <maxPage> pages
+
+func (r *Reader) GetPlainTextSlice(maxPage int) io.Reader {
 	pages := r.NumPage()
+	if maxPage > pages {
+		maxPage = pages
+	}
 	var buf bytes.Buffer
 	fonts := make(map[string]*Font)
-	for i := 1; i < pages; i++ {
+	for i := 1; i < maxPage; i++ {
 		p := r.Page(i)
 		for _, name := range p.Fonts() { // cache fonts so we don't continually parse charmap
 			if _, ok := fonts[name]; !ok {
@@ -73,6 +78,12 @@ func (r *Reader) GetPlainText() io.Reader {
 		buf.WriteString(p.GetPlainText(fonts))
 	}
 	return &buf
+}
+
+// GetPlainText returns all the text in the PDF file
+func (r *Reader) GetPlainText() io.Reader {
+	pages := r.NumPage()
+	return r.GetPlainTextSlice(pages)
 }
 
 func (p Page) findInherited(key string) Value {
